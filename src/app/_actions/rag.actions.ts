@@ -11,7 +11,7 @@ export interface QueryRagActionResult {
         id: string;
         content: string;
         similarity: number;
-        metadata?: { name?: string; [key: string]: unknown };
+        metadata?: { name?: string;[key: string]: unknown };
         sourceType?: string;
     }>;
     error?: string;
@@ -29,13 +29,23 @@ export async function queryRagAction(query: string): Promise<QueryRagActionResul
         }
 
         let answer = response.data.answer;
-        
+
         // If the answer is an object (e.g. { doctors: [...] }), convert it to a readable string
         if (typeof answer === 'object' && answer !== null) {
             if ('doctors' in answer && Array.isArray((answer as any).doctors)) {
-                const doctors = (answer as any).doctors;
-                answer = `I found ${doctors.length} doctor(s) for you:\n\n` + 
-                         doctors.map((d: any) => `- ${d.name} (${d.specialty || d.designation})`).join('\n');
+                const doctors = (answer as any).doctors.slice(0, 5); // Take max 5 doctors
+
+                if (doctors.length > 0) {
+                    answer = `I found ${doctors.length} doctor(s) for you:\n\n` +
+                        doctors.map((d: any, i: number) => {
+                            let text = `${i + 1}. **${d.name}**\n`;
+                            if (d.specialty) text += ` Specialty: ** ${d.specialty} ** \n`;
+                            if (d.reason) text += ` Why: ${d.reason}\n`;
+                            return text;
+                        }).join('\n');
+                } else {
+                    answer = "I couldn't find any specific doctors matching your request.";
+                }
             } else {
                 answer = JSON.stringify(answer, null, 2);
             }
@@ -81,3 +91,17 @@ export async function ingestDoctorsAction(): Promise<IngestDoctorsActionResult> 
         };
     }
 }
+
+// ─── Action: Get User Role ────────────────────────────────────────────────────
+
+export async function getUserRoleAction(): Promise<string | null> {
+    try {
+        const { getUserInfo } = await import("@/services/auth.services");
+        const userInfo = await getUserInfo();
+        return userInfo?.role ?? null;
+    } catch (error) {
+        console.error("[getUserRoleAction] Error:", error);
+        return null;
+    }
+}
+

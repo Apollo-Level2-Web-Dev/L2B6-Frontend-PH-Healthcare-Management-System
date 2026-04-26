@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/purity */
 "use client";
 
 import { useState, useRef, useEffect, useTransition } from "react";
@@ -12,7 +13,7 @@ import {
     ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
-import { queryRagAction, ingestDoctorsAction } from "@/app/_actions/rag.actions";
+import { queryRagAction, ingestDoctorsAction, getUserRoleAction } from "@/app/_actions/rag.actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,8 @@ type Message = {
     role: "user" | "bot";
     content: string;
     sources?: MessageSource[];
+    isError?: boolean;
+    queryToRetry?: string;
 };
 
 const INITIAL_MESSAGES: Message[] = [
@@ -76,7 +79,7 @@ function TypingIndicator() {
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({ message, onRetry }: { message: Message; onRetry?: (query: string) => void }) {
     const isUser = message.role === "user";
 
     return (
@@ -106,9 +109,24 @@ function MessageBubble({ message }: { message: Message }) {
                     }`}
                 >
                     {typeof message.content === "string" 
-                        ? message.content 
+                        ? message.content.split(/(\*\*.*?\*\*)/g).map((part, i) => 
+                            part.startsWith("**") && part.endsWith("**") 
+                                ? <strong key={i}>{part.slice(2, -2)}</strong> 
+                                : part
+                          )
                         : JSON.stringify(message.content, null, 2)}
                 </div>
+
+                {/* Error Retry Button */}
+                {message.isError && onRetry && message.queryToRetry && (
+                    <button 
+                        onClick={() => onRetry(message.queryToRetry!)}
+                        className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700 font-medium mt-1 cursor-pointer bg-blue-50 px-2 py-1 rounded-md border border-blue-100"
+                    >
+                        <RefreshCw size={10} />
+                        Retry
+                    </button>
+                )}
 
                 {/* Sources */}
                 {!isUser && message.sources && message.sources.length > 0 && (
@@ -145,8 +163,18 @@ export default function FloatingChatbot() {
     const [inputValue, setInputValue] = useState("");
     const [isQuerying, startQueryTransition] = useTransition();
     const [isSyncing, startSyncTransition] = useTransition();
+    const [userRole, setUserRole] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Fetch user role on mount
+    useEffect(() => {
+        const fetchRole = async () => {
+            const role = await getUserRoleAction();
+            setUserRole(role);
+        };
+        fetchRole();
+    }, []);
 
     // Auto scroll to bottom on new messages
     useEffect(() => {
@@ -200,6 +228,8 @@ export default function FloatingChatbot() {
                     ? result.answer!
                     : result.error ?? "Something went wrong. Please try again.",
                 sources: result.success ? result.sources : undefined,
+                isError: !result.success,
+                queryToRetry: !result.success ? text : undefined,
             };
 
             setMessages((prev) => [...prev, botMsg]);
@@ -230,18 +260,20 @@ export default function FloatingChatbot() {
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
-                        {/* Sync button */}
-                        <button
-                            onClick={handleSync}
-                            disabled={isSyncing}
-                            title="Sync Doctor Data"
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-60 cursor-pointer"
-                        >
-                            <RefreshCw
-                                size={16}
-                                className={isSyncing ? "animate-spin" : ""}
-                            />
-                        </button>
+                        {/* Sync button — ADMIN ONLY */}
+                        {(userRole === "ADMIN" || userRole === "SUPER_ADMIN") && (
+                            <button
+                                onClick={handleSync}
+                                disabled={isSyncing}
+                                title="Sync Doctor Data"
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-60 cursor-pointer"
+                            >
+                                <RefreshCw
+                                    size={16}
+                                    className={isSyncing ? "animate-spin" : ""}
+                                />
+                            </button>
+                        )}
                         {/* Close button */}
                         <button
                             onClick={() => setIsOpen(false)}
@@ -259,7 +291,7 @@ export default function FloatingChatbot() {
                     style={{ minHeight: "200px", maxHeight: "55vh" }}
                 >
                     {messages.map((msg) => (
-                        <MessageBubble key={msg.id} message={msg} />
+                        <MessageBubble key={msg.id} message={msg} onRetry={handleSend} />
                     ))}
 
                     {isQuerying && <TypingIndicator />}
