@@ -142,33 +142,6 @@ export function Hero({
                   <SparkleIcon />
                 </div>
 
-                {/* Form */}
-                <form className="space-y-6">
-                  {/* Symptoms Input */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="symptoms"
-                      className="text-[11.9px] text-gray-700"
-                    >
-                      {formCard.symptomLabel}
-                    </Label>
-                    <Input
-                      id="symptoms"
-                      name="symptoms"
-                      placeholder={formCard.symptomPlaceholder}
-                      className="h-[49.787px] rounded-xl border-gray-300"
-                    />
-                  </div>
-
-                  {/* Submit Button */}
-                  <Button
-                    type="submit"
-                    className="h-[59.986px] w-full rounded-xl bg-blue-600 text-[15.3px] hover:bg-blue-700"
-                  >
-                    {formCard.submitText}
-                  </Button>
-                </form>
-
                 {/* Footer */}
                 <div className="mt-6 border-t border-gray-200 pt-4">
                   <p className="text-center text-[11.9px] leading-5 text-gray-600">
