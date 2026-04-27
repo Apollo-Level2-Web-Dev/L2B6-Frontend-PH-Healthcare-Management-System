@@ -44,7 +44,7 @@ export const queryRagAction = async (query: string) => {
     return {
       success: true,
       answer: answer as string,
-      sources: `${sources}% matched`,
+      sources: `${(sources).toFixed(2)}% matched`,
     };
   } catch (error) {
     console.log(error);

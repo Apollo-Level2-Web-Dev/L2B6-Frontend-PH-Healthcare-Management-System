@@ -19,18 +19,21 @@ export const metadata: Metadata = {
   description: "A comprehensive healthcare management system built with Next.js, TypeScript, and Tailwind CSS. This application provides features for managing patient records, appointments, billing, and more, ensuring efficient healthcare administration.",
 };
 
+import FloatingChatbot from "@/components/modules/Chatbot/FloatingChatbot";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning={true}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryProviders>
           {children}
+          <FloatingChatbot />
           <Toaster position="top-right" richColors />
         </QueryProviders>
       </body>
